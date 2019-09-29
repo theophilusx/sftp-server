@@ -5,16 +5,110 @@ const fs = require('fs');
 const crypto = require('crypto');
 const ssh2 = require('ssh2');
 const {readDir} = require('./files');
-
+const {handleState, handleType, handleFactory} = require('./handle');
 const OPEN_MODE = ssh2.SFTP_OPEN_MODE;
 const STATUS_CODE = ssh2.SFTP_STATUS_CODE;
 
+const makeHandle = handleFactory();
 const allowedUser = 'test';
 const allowedPassword = 'secret';
 
 const root = path.join(__dirname, '../data');
 
-let handles = [];
+let handles = new Map();
+
+function mkOpendirListener(sftp) {
+  return function opendir(reqid, path) {
+    console.log(`SFTP opendir event: RQID: ${reqid}`);
+    console.log(`path: ${path}`);
+    let dirPath = path || root;
+    if (!dirPath.startsWith('/')) {
+      dirPath = path.join(root, dirPath);
+    }
+    if (!dirPath.startsWith(root)) {
+      sftp.status(reqid, STATUS_CODE.FAILURE, 'Invalid directory path');
+      return true;
+    }
+    fs.realpath(dirPath, function(err, absPath) {
+      if (err) {
+        sftp.status(reqid, STATUS_CODE.NO_SUCH_FILE);
+      } else {
+        fs.stat(absPath, (err, stats) => {
+          if (err) {
+            sftp.status(reqid, STATUS_CODE.FAILURE, err.message);
+          } else {
+            if (stats.isDirectory()) {
+              let handle = makeHandle(handleType.DIR, absPath);
+              handles.set(`handle-${handle.id}`, handle);
+              sftp.handle(reqid, Buffer.from(`handle-${handle.id}`));
+            } else {
+              sftp.status(
+                reqid,
+                STATUS_CODE.FAILURE,
+                `${path} is not a directory`
+              );
+            }
+          }
+        });
+      }
+    });
+    return true;
+  };
+}
+
+function mkReaddirListener(sftp) {
+  return async function(reqid, buffer) {
+    console.log(`SFTP readdir event: RQID: ${reqid}`);
+    console.log(`handle is ${buffer.toString()}`);
+
+    try {
+      let handleId = buffer.toString();
+      let handle = handles.get(handleId);
+      if (!handle) {
+        sftp.status(
+          reqid,
+          STATUS_CODE.FAILURE,
+          `Unknown handle ID ${handleId}`
+        );
+      } else if (handle.type !== handleType.DIR) {
+        sftp.status(reqid, STATUS_CODE.FAILURE, 'Bad handle type');
+      } else if (handle.status === handleState.CLOSE) {
+        sftp.status(reqid, STATUS_CODE.FAILURE, 'handle is already closed');
+      } else if (handle.state === handleState.COMPLETE) {
+        sftp.status(reqid, STATUS_CODE.EOF);
+      } else {
+        let fileData = await readDir(handle.path);
+        handle.state = handleState.COMPLETE;
+        handles.set(handleId, handle);
+        sftp.name(reqid, fileData);
+      }
+      return true;
+    } catch (err) {
+      console.log(`Error Msg: ${err}`);
+      sftp.status(reqid, STATUS_CODE.FAILURE, err.toString());
+      return true;
+    }
+  };
+}
+
+function mkCloseListener(sftp) {
+  return function close(reqid, buffer) {
+    console.log(`SFTP close reqid ${reqid}`);
+    console.log(`handle: ${buffer.toString()}`);
+    let handleId = buffer.toString();
+    let handle = handles.get(handleId);
+    if (!handle) {
+      sftp.status(reqid, STATUS_CODE.FAILURE, `Unknown handle ID ${handleId}`);
+    } else if (handle.type === handleType.DIR) {
+      handle.state = handleState.CLOSE;
+      handles.set(handleId, handle);
+      sftp.status(reqid, STATUS_CODE.OK);
+    } else {
+      sftp.status(reqid, STATUS_CODE.OP_UNSUPPORTED);
+    }
+    return true;
+  };
+}
 
 new ssh2.Server(
   {
@@ -77,6 +171,9 @@ new ssh2.Server(
             sftpStream
               .on('OPEN', function(reqid, filename, flags, attrs) {
                 console.log(`SFTP open event: RQID: ${reqid}`);
+                console.log(
+                  `filename: ${filename} flags: ${flags} attrs: ${attrs}`
+                );
                 // only allow opening /tmp/foo.txt for writing
                 if (filename !== '/tmp/foo.txt' || !(flags & OPEN_MODE.WRITE))
                   return sftpStream.status(reqid, STATUS_CODE.FAILURE);
@@ -91,58 +188,41 @@ new ssh2.Server(
               })
               .on('READ', function(reqid, handle, offset, length) {
                 console.log(`SFTP read event: RQID ${reqid}`);
+                console.log(
+                  `handle: ${handle.toString()} offset: ${offset} length: ${length}`
+                );
                 sftpStream.status(reqid, STATUS_CODE.OP_UNSUPPORTED);
               })
               .on('FSTAT', function(reqid, handle) {
                 console.log(`SFTP fstat event: RQID: ${reqid}`);
+                console.log(`handle: ${handle.toString()}`);
                 sftpStream.status(reqid, STATUS_CODE.OP_UNSUPPORTED);
               })
               .on('FSETSTAT', function(reqid, handle, attrs) {
                 console.log(`SFTP fsetstat event: RQID: ${reqid}`);
+                console.log(`handle: ${handle.toString()} attrs: ${attrs}`);
                 sftpStream.status(reqid, STATUS_CODE.OP_UNSUPPORTED);
               })
-              .on('OPENDIR', function(reqid, path) {
-                console.log(`SFTP opendir event: RQID: ${reqid}`);
-                let dirPath = path || root;
-                if (!dirPath.startsWith('/')) {
-                  dirPath = path.join(root, dirPath);
-                }
-                fs.realpath(dirPath, function(err, absPath) {
-                  if (err) {
-                    sftpStream.status(reqid, STATUS_CODE.NO_SUCH_FILE);
-                  } else {
-                    sftpStream.handle(reqid, Buffer.from(absPath));
-                  }
-                });
-              })
-              .on('READDIR', async function(reqid, handle) {
-                console.log(`SFTP readdir event: RQID: ${reqid}`);
-                console.log(`handle is ${handle.toString()}`);
-                try {
-                  let fileData = await readDir(handle.toString());
-                  sftpStream.name(reqid, fileData);
-                  sftpStream.status(reqid, STATUS_CODE.EOF);
-                  return true;
-                } catch (err) {
-                  console.log(`Error Msg: ${err}`);
-                  sftpStream.status(reqid, STATUS_CODE.FAILURE, err.toString());
-                  return true;
-                }
-              })
+              .on('OPENDIR', mkOpendirListener(sftpStream))
+              .on('READDIR', mkReaddirListener(sftpStream))
               .on('LSTAT', function(reqid, path) {
                 console.log(`SFTP lstat event: RQID ${reqid}`);
+                console.log(`path: ${path}`);
                 sftpStream.status(reqid, STATUS_CODE.OP_UNSUPPORTED);
               })
               .on('STAT', function(reqid, path) {
                 console.log(`SFTP stat event: RQID ${reqid}`);
+                console.log(`path: ${path}`);
                 sftpStream.status(reqid, STATUS_CODE.OP_UNSUPPORTED);
               })
               .on('REMOVE', function(reqid, path) {
                 console.log(`SFTP remove event: RQID ${reqid}`);
+                console.log(`path: ${path}`);
                 sftpStream.status(reqid, STATUS_CODE.OP_UNSUPPORTED);
               })
               .on('RMDIR', function(reqid, path) {
                 console.log(`SFTP rmdir event: RQID ${reqid}`);
+                console.log(`path: ${path}`);
                 sftpStream.status(reqid, STATUS_CODE.OP_UNSUPPORTED);
               })
               .on('REALPATH', function(reqid, path) {
@@ -154,22 +234,27 @@ new ssh2.Server(
               })
               .on('READLINK', function(reqid, path) {
                 console.log(`SFTP readlink event: RQID ${reqid}`);
+                console.log(`path: ${path}`);
                 sftpStream.status(reqid, STATUS_CODE.OP_UNSUPPORTED);
               })
               .on('SETSTAT', function(reqid, path, attrs) {
                 console.log(`SFTP setstat event: RQID: ${reqid}`);
+                console.log(`path: ${path} attrs: ${attrs}`);
                 sftpStream.status(reqid, STATUS_CODE.OP_UNSUPPORTED);
               })
               .on('MKDIR', function(reqid, path, attrs) {
                 console.log(`SFTP mkdir event: RQID: ${reqid}`);
+                console.log(`path: ${path} attrs: ${attrs}`);
                 sftpStream.status(reqid, STATUS_CODE.OP_UNSUPPORTED);
               })
               .on('RENAME', function(reqid, oldName, newName) {
                 console.log(`SFTP rename event: RQID ${reqid}`);
+                console.log(`oldName: ${oldName} newName: ${newName}`);
                 sftpStream.status(reqid, STATUS_CODE.OP_UNSUPPORTED);
               })
               .on('SYMLINK', function(reqid, linkPath, targetPath) {
                 console.log(`SFTP symlink event: RQID: ${reqid}`);
+                console.log(`linkath: ${linkPath} target: ${targetPath}`);
                 sftpStream.status(reqid, STATUS_CODE.OP_UNSUPPORTED);
               })
               .on('WRITE', function(reqid, handle, offset, data) {
@@ -188,18 +273,7 @@ new ssh2.Server(
                   inspected
                 );
               })
-              .on('CLOSE', function(reqid, handle) {
-                console.log(`SFTP close event: RQID ${reqid}`);
-                let fnum;
-                if (
-                  handle.length !== 4 ||
-                  !openFiles[(fnum = handle.readUInt32BE(0, true))]
-                )
-                  return sftpStream.status(reqid, STATUS_CODE.FAILURE);
-                delete openFiles[fnum];
-                sftpStream.status(reqid, STATUS_CODE.OK);
-                console.log('Closing file');
-              });
+              .on('CLOSE', mkCloseListener(sftpStream));
           });
         });
       })
