@@ -110,36 +110,80 @@ function getTimeString(timeMs) {
   return time.format('MMM DD YYYY');
 }
 
-function getFileData(filePath) {
+function realpath(filePath) {
   return new Promise((resolve, reject) => {
-    fs.lstat(filePath, (err, stats) => {
+    fs.realpath(filePath, (err, absPath) => {
       if (err) {
         reject(err.message);
       } else {
-        let filename = path.parse(filePath).base;
-        let fileType = getFileType(stats.mode);
-        let perms = getPermissions(stats.mode);
-        let mTime = getTimeString(stats.mtimeMs);
-        resolve({
-          filename: filename,
-          longname:
-            `${fileType}${perms} ${stats.nlink} ${stats.uid} ` +
-            `${stats.gid} ${stats.size} ${mTime} ${filename}`,
-          attrs: {
-            mode: stats.mode,
-            uid: stats.uid,
-            gid: stats.gid,
-            size: stats.size,
-            atime: stats.atimeMs / 1000,
-            mtime: stats.mtimeMs / 1000
-          }
-        });
+        resolve(absPath);
       }
     });
   });
 }
 
-function getDirData(dirPath) {
+function lstat(dir) {
+  return new Promise((resolve, reject) => {
+    fs.lstat(dir, (err, stats) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(stats);
+      }
+    });
+  });
+}
+
+function stat(dir) {
+  return new Promise((resolve, reject) => {
+    fs.stat(dir, (err, stats) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(stats);
+      }
+    });
+  });
+}
+
+function open(filePath, flags) {
+  return new Promise((resolve, reject) => {
+    fs.open(filePath, flags, (err, fd) => {
+      if (err) {
+        reject(err.message);
+      } else {
+        resolve(fd);
+      }
+    });
+  });
+}
+
+function close(fd) {
+  return new Promise((resolve, reject) => {
+    fs.close(fd, err => {
+      if (err) {
+        reject(err.message);
+      } else {
+        resolve(true);
+      }
+    });
+  });
+}
+
+function read(fd, length) {
+  return new Promise((resolve, reject) => {
+    let buf = Buffer.alloc(length);
+    fs.read(fd, buf, 0, length, null, (err, bytesRead, buf) => {
+      if (err) {
+        reject(err.message);
+      } else {
+        resolve([bytesRead, buf]);
+      }
+    });
+  });
+}
+
+function readdir(dirPath) {
   return new Promise((resolve, reject) => {
     fs.readdir(dirPath, (err, files) => {
       if (err) {
@@ -151,19 +195,54 @@ function getDirData(dirPath) {
   });
 }
 
-function readDir(dirPath) {
-  return getDirData(dirPath).then(async fileList => {
+async function getFileData(filePath) {
+  try {
+    let stats = await lstat(filePath);
+    let filename = path.parse(filePath).base;
+    let fileType = getFileType(stats.mode);
+    let perms = getPermissions(stats.mode);
+    let mTime = getTimeString(stats.mtimeMs);
+    return {
+      filename: filename,
+      longname:
+        `${fileType}${perms} ${stats.nlink} ${stats.uid} ` +
+        `${stats.gid} ${stats.size} ${mTime} ${filename}`,
+      attrs: {
+        mode: stats.mode,
+        uid: stats.uid,
+        gid: stats.gid,
+        size: stats.size,
+        atime: stats.atimeMs / 1000,
+        mtime: stats.mtimeMs / 1000
+      }
+    };
+  } catch (err) {
+    throw new Error(`getFileData: ${err.message}`);
+  }
+}
+
+async function getDirData(dirPath) {
+  try {
     let data = [];
-    for (let f of fileList) {
+    let files = await readdir(dirPath);
+    for (let f of files) {
       let e = await getFileData(path.join(dirPath, f));
       data.push(e);
     }
     return data;
-  });
+  } catch (err) {
+    throw new Error(`readDir: ${err.message}`);
+  }
 }
 
 module.exports = {
+  realpath,
+  lstat,
+  stat,
+  open,
+  close,
+  read,
+  readdir,
   getFileData,
-  getDirData,
-  readDir
+  getDirData
 };

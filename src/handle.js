@@ -15,12 +15,15 @@ const handleType = {
 
 function handleFactory() {
   let handleId = 0;
-  return function(type, path) {
+  return function(type, path, fd = -1, mode = 'r', offset = 0) {
     return {
       id: handleId++,
       state: handleState.NEW,
       type: type,
-      path: path
+      path: path,
+      fd: fd,
+      mode: mode,
+      offset: offset
     };
   };
 }
