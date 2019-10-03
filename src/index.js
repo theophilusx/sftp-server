@@ -69,56 +69,20 @@ new ssh2.Server(
             sftpStream
               .on('OPEN', listeners.open(sftpStream))
               .on('READ', listeners.read(sftpStream))
-              .on('FSTAT', function(reqid, handle) {
-                console.log(`SFTP fstat event: RQID: ${reqid}`);
-                console.log(`handle: ${handle.toString()}`);
-                sftpStream.status(reqid, STATUS_CODE.OP_UNSUPPORTED);
-              })
-              .on('FSETSTAT', function(reqid, handle, attrs) {
-                console.log(`SFTP fsetstat event: RQID: ${reqid}`);
-                console.log(`handle: ${handle.toString()} attrs: ${attrs}`);
-                sftpStream.status(reqid, STATUS_CODE.OP_UNSUPPORTED);
-              })
+              .on('FSTAT', listeners.noop(sftpStream, 'fstat'))
+              .on('FSETSTAT', listeners.noop(sftpStream, 'fsetstat'))
               .on('OPENDIR', listeners.opendir(sftpStream))
               .on('READDIR', listeners.readdir(sftpStream))
               .on('LSTAT', listeners.lstat(sftpStream))
               .on('STAT', listeners.stat(sftpStream))
-              .on('REMOVE', function(reqid, path) {
-                console.log(`SFTP remove event: RQID ${reqid}`);
-                console.log(`path: ${path}`);
-                sftpStream.status(reqid, STATUS_CODE.OP_UNSUPPORTED);
-              })
-              .on('RMDIR', function(reqid, path) {
-                console.log(`SFTP rmdir event: RQID ${reqid}`);
-                console.log(`path: ${path}`);
-                sftpStream.status(reqid, STATUS_CODE.OP_UNSUPPORTED);
-              })
+              .on('REMOVE', listeners.noop(sftpStream, 'remove'))
+              .on('RMDIR', listeners.noop(sftpStream, 'rmdir'))
               .on('REALPATH', listeners.realpath(sftpStream))
-              .on('READLINK', function(reqid, path) {
-                console.log(`SFTP readlink event: RQID ${reqid}`);
-                console.log(`path: ${path}`);
-                sftpStream.status(reqid, STATUS_CODE.OP_UNSUPPORTED);
-              })
-              .on('SETSTAT', function(reqid, path, attrs) {
-                console.log(`SFTP setstat event: RQID: ${reqid}`);
-                console.log(`path: ${path} attrs: ${attrs}`);
-                sftpStream.status(reqid, STATUS_CODE.OP_UNSUPPORTED);
-              })
-              .on('MKDIR', function(reqid, path, attrs) {
-                console.log(`SFTP mkdir event: RQID: ${reqid}`);
-                console.log(`path: ${path} attrs: ${attrs}`);
-                sftpStream.status(reqid, STATUS_CODE.OP_UNSUPPORTED);
-              })
-              .on('RENAME', function(reqid, oldName, newName) {
-                console.log(`SFTP rename event: RQID ${reqid}`);
-                console.log(`oldName: ${oldName} newName: ${newName}`);
-                sftpStream.status(reqid, STATUS_CODE.OP_UNSUPPORTED);
-              })
-              .on('SYMLINK', function(reqid, linkPath, targetPath) {
-                console.log(`SFTP symlink event: RQID: ${reqid}`);
-                console.log(`linkath: ${linkPath} target: ${targetPath}`);
-                sftpStream.status(reqid, STATUS_CODE.OP_UNSUPPORTED);
-              })
+              .on('READLINK', listeners.noop(sftpStream, 'readlink'))
+              .on('SETSTAT', listeners.noop(sftpStream, 'setstat'))
+              .on('MKDIR', listeners.noop(sftpStream, 'mkdir'))
+              .on('RENAME', listeners.noop(sftpStream, 'rename'))
+              .on('SYMLINK', listeners.noop(sftpStream, 'symlink'))
               .on('WRITE', listeners.write(sftpStream))
               .on('CLOSE', listeners.close(sftpStream));
           });

@@ -289,6 +289,14 @@ function write(sftp) {
   };
 }
 
+function noop(sftp, name) {
+  return function(reqid) {
+    console.log(`SFTP ${name} REQID: ${reqid}`);
+    sftp.status(reqid, STATUS_CODE.OP_UNSUPPORTED);
+    return true;
+  };
+}
+
 module.exports = {
   opendir,
   readdir,
@@ -298,5 +306,6 @@ module.exports = {
   realpath,
   open,
   read,
-  write
+  write,
+  noop
 };
