@@ -4,7 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const ssh2 = require('ssh2');
-const listeners = require('listeners');
+const listeners = require('./listeners');
 
 const STATUS_CODE = ssh2.SFTP_STATUS_CODE;
 
@@ -34,6 +34,7 @@ new ssh2.Server(
           return ctx.reject();
         }
 
+        // @ts-ignore
         let password = ctx.password;
         console.log(`Password is ${password}`);
         console.log(`Method is ${ctx.method}`);
@@ -64,14 +65,10 @@ new ssh2.Server(
           let session = accept();
           session.on('sftp', function(accept, reject) {
             console.log('Client SFTP session');
-            let openFiles = {};
-            let handleCount = 0;
-            // `sftpStream` is an `SFTPStream` instance in server mode
-            // see: https://github.com/mscdex/ssh2-streams/blob/master/SFTPStream.md
             let sftpStream = accept();
             sftpStream
-              .on('OPEN', listeners.openListener(sftpStream))
-              .on('READ', listeners.readListener(sftpStream))
+              .on('OPEN', listeners.open(sftpStream))
+              .on('READ', listeners.read(sftpStream))
               .on('FSTAT', function(reqid, handle) {
                 console.log(`SFTP fstat event: RQID: ${reqid}`);
                 console.log(`handle: ${handle.toString()}`);
@@ -82,10 +79,10 @@ new ssh2.Server(
                 console.log(`handle: ${handle.toString()} attrs: ${attrs}`);
                 sftpStream.status(reqid, STATUS_CODE.OP_UNSUPPORTED);
               })
-              .on('OPENDIR', listeners.opendirListener(sftpStream))
-              .on('READDIR', listeners.readdirListener(sftpStream))
-              .on('LSTAT', listeners.lstatListener(sftpStream))
-              .on('STAT', listeners.statListener(sftpStream))
+              .on('OPENDIR', listeners.opendir(sftpStream))
+              .on('READDIR', listeners.readdir(sftpStream))
+              .on('LSTAT', listeners.lstat(sftpStream))
+              .on('STAT', listeners.stat(sftpStream))
               .on('REMOVE', function(reqid, path) {
                 console.log(`SFTP remove event: RQID ${reqid}`);
                 console.log(`path: ${path}`);
@@ -96,7 +93,7 @@ new ssh2.Server(
                 console.log(`path: ${path}`);
                 sftpStream.status(reqid, STATUS_CODE.OP_UNSUPPORTED);
               })
-              .on('REALPATH', listeners.realpathListener(sftpStream))
+              .on('REALPATH', listeners.realpath(sftpStream))
               .on('READLINK', function(reqid, path) {
                 console.log(`SFTP readlink event: RQID ${reqid}`);
                 console.log(`path: ${path}`);
@@ -122,23 +119,8 @@ new ssh2.Server(
                 console.log(`linkath: ${linkPath} target: ${targetPath}`);
                 sftpStream.status(reqid, STATUS_CODE.OP_UNSUPPORTED);
               })
-              .on('WRITE', function(reqid, handle, offset, data) {
-                console.log(`SFTP write event: RQID: ${reqid}`);
-                if (
-                  handle.length !== 4 ||
-                  !openFiles[handle.readUInt32BE(0, true)]
-                )
-                  return sftpStream.status(reqid, STATUS_CODE.FAILURE);
-                // fake the write
-                sftpStream.status(reqid, STATUS_CODE.OK);
-                let inspected = require('util').inspect(data);
-                console.log(
-                  'Write to file at offset %d: %s',
-                  offset,
-                  inspected
-                );
-              })
-              .on('CLOSE', listeners.closeListener(sftpStream));
+              .on('WRITE', listeners.write(sftpStream))
+              .on('CLOSE', listeners.close(sftpStream));
           });
         });
       })

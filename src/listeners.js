@@ -12,7 +12,7 @@ const STATUS_CODE = ssh2.SFTP_STATUS_CODE;
 const root = path.join(__dirname, '../data');
 let handles = new Map();
 
-function opendirListener(sftp) {
+function opendir(sftp) {
   return async function(reqid, path) {
     console.log(`SFTP opendir event: RQID: ${reqid}`);
     console.log(`path: ${path}`);
@@ -43,7 +43,7 @@ function opendirListener(sftp) {
   };
 }
 
-function readdirListener(sftp) {
+function readdir(sftp) {
   return async function(reqid, buffer) {
     console.log(`SFTP readdir event: RQID: ${reqid}`);
     console.log(`handle is ${buffer.toString()}`);
@@ -78,7 +78,7 @@ function readdirListener(sftp) {
   };
 }
 
-function closeListener(sftp) {
+function close(sftp) {
   return async function(reqid, buffer) {
     console.log(`SFTP close reqid ${reqid}`);
     console.log(`handle: ${buffer.toString()}`);
@@ -103,7 +103,7 @@ function closeListener(sftp) {
   };
 }
 
-function lstatListener(sftp) {
+function lstat(sftp) {
   return async function(reqid, filePath) {
     console.log(`SFTP lstat REQID ${reqid}`);
     console.log(`filePath: ${filePath}`);
@@ -130,7 +130,7 @@ function lstatListener(sftp) {
   };
 }
 
-function statListener(sftp) {
+function stat(sftp) {
   return async function(reqid, filePath) {
     console.log(`SFTP lstat REQID ${reqid}`);
     console.log(`filePath: ${filePath}`);
@@ -157,7 +157,7 @@ function statListener(sftp) {
   };
 }
 
-function realpathListener(sftp) {
+function realpath(sftp) {
   return async function(reqid, filePath) {
     console.log(`SFTP realpath REQID: ${reqid}`);
     console.log(`Path: ${filePath}`);
@@ -181,7 +181,7 @@ function realpathListener(sftp) {
   };
 }
 
-function openListener(sftp) {
+function open(sftp) {
   return async function(reqid, filename, flags, attrs) {
     console.log(`SFTP open REQID ${reqid}`);
     console.log(
@@ -225,7 +225,7 @@ function openListener(sftp) {
   };
 }
 
-function readListener(sftp) {
+function read(sftp) {
   return async function(reqid, buffer, offset, length) {
     console.log(`SFTP read REQID ${reqid}`);
     console.log(
@@ -273,13 +273,30 @@ function readListener(sftp) {
   };
 }
 
+function write(sftp) {
+  return async function(reqid, buffer, offset, data) {
+    console.log(`SFTP write REQID: ${reqid}`);
+    console.log(
+      `Handle ID: ${buffer.toString()} Offset: ${offset} Length: ${data.length}`
+    );
+
+    try {
+      sftp.status(reqid, STATUS_CODE.OP_UNSUPPORTED);
+    } catch (err) {
+      sftp.status(reqid, STATUS_CODE.FAILURE, err.message);
+    }
+    return true;
+  };
+}
+
 module.exports = {
-  opendirListener,
-  readdirListener,
-  closeListener,
-  lstatListener,
-  statListener,
-  realpathListener,
-  openListener,
-  readListener
+  opendir,
+  readdir,
+  close,
+  lstat,
+  stat,
+  realpath,
+  open,
+  read,
+  write
 };
