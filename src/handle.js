@@ -1,21 +1,19 @@
-'use strict';
-
 const handleState = {
   NEW: 1,
   OPEN: 2,
   CLOSE: 3,
-  COMPLETE: 4
+  COMPLETE: 4,
 };
 
 const handleType = {
   FILE: 1,
   DIR: 2,
-  UNKNOWN: 3
+  UNKNOWN: 3,
 };
 
 function handleFactory() {
   let handleId = 0;
-  return function(type, path, fd = -1, mode = 'r', offset = 0) {
+  return function (type, path, fd = -1, mode = "r", offset = 0) {
     return {
       id: handleId++,
       state: handleState.NEW,
@@ -23,7 +21,7 @@ function handleFactory() {
       path: path,
       fd: fd,
       mode: mode,
-      offset: offset
+      offset: offset,
     };
   };
 }
@@ -31,5 +29,5 @@ function handleFactory() {
 module.exports = {
   handleState,
   handleType,
-  handleFactory
+  handleFactory,
 };

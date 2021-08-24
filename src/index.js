@@ -1,97 +1,99 @@
-'use strict';
+"use strict";
 
-const path = require('path');
-const fs = require('fs');
-const crypto = require('crypto');
-const ssh2 = require('ssh2');
-const listeners = require('./listeners');
+const path = require("path");
+const fs = require("fs");
+const { Server } = require("ssh2");
+const listeners = require("./listeners");
+const { checkValue } = require("./utils");
 
-const STATUS_CODE = ssh2.SFTP_STATUS_CODE;
+//const STATUS_CODE = ssh2.SFTP_STATUS_CODE;
 
-const allowedUser = 'test';
-const allowedPassword = 'secret';
+const allowedUser = Buffer.from("test");
+const allowedPassword = Buffer.from("secret");
 
-new ssh2.Server(
+new Server(
   {
     hostKeys: [
-      fs.readFileSync(path.join(__dirname, '../keys', 'sftp-test_rsa'))
-    ]
+      fs.readFileSync(path.join(__dirname, "../keys", "sftp-test_rsa")),
+    ],
   },
-  function(client) {
-    console.log('Client connected!');
+  (client) => {
+    console.log("Client connected!");
 
     client
-      .on('authentication', function(ctx) {
-        console.log('Context:');
+      .on("authentication", (ctx) => {
+        console.log("Context:");
         console.dir(ctx);
-        let user = ctx.username;
-        console.log(`Username is ${user}`);
-        if (
-          user.length !== allowedUser.length ||
-          !crypto.timingSafeEqual(Buffer.from(user), Buffer.from(allowedUser))
-        ) {
-          console.log('Username does not match');
-          return ctx.reject();
+        let user = Buffer.from(ctx.username);
+        console.log(`Username is ${ctx.username}`);
+
+        let allowed = true;
+
+        if (!checkValue(user, allowedUser)) {
+          console.log("Username does not match");
+          allowed = false;
         }
 
-        // @ts-ignore
-        let password = ctx.password;
-        console.log(`Password is ${password}`);
         console.log(`Method is ${ctx.method}`);
+
         switch (ctx.method) {
-          case 'password':
-            if (
-              password.length !== allowedPassword.length ||
-              !crypto.timingSafeEqual(
-                Buffer.from(password),
-                Buffer.from(allowedPassword)
-              )
-            ) {
-              console.log('Password does not match');
+          case "password": {
+            let password = Buffer.from(ctx.password);
+            if (!checkValue(password, allowedPassword)) {
+              console.log("Password failed");
               return ctx.reject();
             }
             break;
-          default:
+          }
+          default: {
+            console.log(`No supporting method for ${ctx.method}`);
             return ctx.reject();
+          }
         }
-
-        ctx.accept();
+        if (allowed) {
+          console.log("Authentication success");
+          return ctx.accept();
+        }
+        console.log("Authenticaiton failure");
+        return ctx.reject();
       })
-      .on('ready', function() {
-        console.log('Client authenticated!');
+      .on("ready", () => {
+        console.log("Client authenticated!");
 
-        client.on('session', function(accept, reject) {
-          console.log('session requested');
+        client.on("session", (accept) => {
+          console.log("session requested");
           let session = accept();
-          session.on('sftp', function(accept, reject) {
-            console.log('Client SFTP session');
+          session.on("sftp", function (accept) {
+            console.log("Client SFTP session");
             let sftpStream = accept();
             sftpStream
-              .on('OPEN', listeners.open(sftpStream))
-              .on('READ', listeners.read(sftpStream))
-              .on('FSTAT', listeners.noop(sftpStream, 'fstat'))
-              .on('FSETSTAT', listeners.noop(sftpStream, 'fsetstat'))
-              .on('OPENDIR', listeners.opendir(sftpStream))
-              .on('READDIR', listeners.readdir(sftpStream))
-              .on('LSTAT', listeners.lstat(sftpStream))
-              .on('STAT', listeners.stat(sftpStream))
-              .on('REMOVE', listeners.noop(sftpStream, 'remove'))
-              .on('RMDIR', listeners.noop(sftpStream, 'rmdir'))
-              .on('REALPATH', listeners.realpath(sftpStream))
-              .on('READLINK', listeners.noop(sftpStream, 'readlink'))
-              .on('SETSTAT', listeners.noop(sftpStream, 'setstat'))
-              .on('MKDIR', listeners.noop(sftpStream, 'mkdir'))
-              .on('RENAME', listeners.noop(sftpStream, 'rename'))
-              .on('SYMLINK', listeners.noop(sftpStream, 'symlink'))
-              .on('WRITE', listeners.write(sftpStream))
-              .on('CLOSE', listeners.close(sftpStream));
+              //.on('OPEN', listeners.open(sftpStream))
+              .on("OPEN", listeners.noop(sftpStream))
+              //.on("READ", listeners.read(sftpStream))
+              .on("READ", listeners.noop(sftpStream))
+              .on("WRITE", listeners.write(sftpStream))
+              .on("FSTAT", listeners.noop(sftpStream, "fstat"))
+              .on("FSETSTAT", listeners.noop(sftpStream, "fsetstat"))
+              .on("CLOSE", listeners.close(sftpStream))
+              .on("OPENDIR", listeners.opendir(sftpStream))
+              .on("READDIR", listeners.readdir(sftpStream))
+              .on("LSTAT", listeners.lstat(sftpStream))
+              .on("STAT", listeners.stat(sftpStream))
+              .on("REMOVE", listeners.noop(sftpStream, "remove"))
+              .on("RMDIR", listeners.noop(sftpStream, "rmdir"))
+              .on("REALPATH", listeners.realpath(sftpStream))
+              .on("READLINK", listeners.noop(sftpStream, "readlink"))
+              .on("SETSTAT", listeners.noop(sftpStream, "setstat"))
+              .on("MKDIR", listeners.noop(sftpStream, "mkdir"))
+              .on("RENAME", listeners.noop(sftpStream, "rename"))
+              .on("SYMLINK", listeners.noop(sftpStream, "symlink"));
           });
         });
       })
-      .on('end', function() {
-        console.log('Client disconnected');
+      .on("end", () => {
+        console.log("Client disconnected");
       });
   }
-).listen(2222, '127.0.0.1', function() {
-  console.log('Listening on port ' + this.address().port);
+).listen(2222, "127.0.0.1", function () {
+  console.log("Listening on port " + this.address().port);
 });

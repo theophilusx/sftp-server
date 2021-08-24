@@ -1,8 +1,6 @@
-'use srtict';
-
-const fs = require('fs');
-const path = require('path');
-const moment = require('moment');
+const fs = require("fs");
+const path = require("path");
+const moment = require("moment");
 
 const fileModeMasks = {
   typeMask: 0o170000,
@@ -12,7 +10,7 @@ const fileModeMasks = {
   block: 0o60000,
   dir: 0o40000,
   character: 0o20000,
-  fifo: 0o10000
+  fifo: 0o10000,
 };
 
 const filePermissionMask = {
@@ -27,7 +25,7 @@ const filePermissionMask = {
   grp_x: 0o10,
   othr_r: 0o4,
   othr_w: 0o2,
-  othr_x: 0o1
+  othr_x: 0o1,
 };
 
 // This could be done easily using the various stats.isXXX() functions.
@@ -36,66 +34,59 @@ const filePermissionMask = {
 // for each of these, which are probably more robust on different platforms.
 // The below works on Linux. Not sure about platforms like Windows.
 function getFileType(mode) {
-  let type = '?'; // ? = unknown type
   let mask = mode & fileModeMasks.typeMask;
 
-  if (mask === fileModeMasks.socket) {
-    type = 's';
-  } else if (mask === fileModeMasks.link) {
-    type = 'l';
-  } else if (mask === fileModeMasks.file) {
-    type = '-';
-  } else if (mask === fileModeMasks.block) {
-    type = 'b';
-  } else if (mask === fileModeMasks.dir) {
-    type = 'd';
-  } else if (mask === fileModeMasks.character) {
-    type = 'c';
-  } else if (mask === fileModeMasks.fifo) {
-    type = 'p';
+  switch (mask) {
+    case fileModeMasks.socket:
+      return "s";
+    case fileModeMasks.link:
+      return "l";
+    case fileModeMasks.file:
+      return "-";
+    case fileModeMasks.block:
+      return "b";
+    case fileModeMasks.dir:
+      return "d";
+    case fileModeMasks.character:
+      return "c";
+    case fileModeMasks.fifo:
+      return "p";
+    default:
+      return "?";
   }
-  return type;
 }
 
 function getPermissions(mode) {
-  let user = '';
-  let group = '';
-  let other = '';
+  let user = "";
+  let group = "";
+  let other = "";
 
-  user += mode & filePermissionMask.user_r ? 'r' : '-';
-  user += mode & filePermissionMask.user_w ? 'w' : '-';
-  user += mode & filePermissionMask.user_x ? 'x' : '-';
+  user += mode & filePermissionMask.user_r ? "r" : "-";
+  user += mode & filePermissionMask.user_w ? "w" : "-";
+  user += mode & filePermissionMask.user_x ? "x" : "-";
 
-  group += mode & filePermissionMask.grp_r ? 'r' : '-';
-  group += mode & filePermissionMask.grp_w ? 'w' : '-';
-  group += mode & filePermissionMask.grp_x ? 'x' : '-';
+  group += mode & filePermissionMask.grp_r ? "r" : "-";
+  group += mode & filePermissionMask.grp_w ? "w" : "-";
+  group += mode & filePermissionMask.grp_x ? "x" : "-";
 
-  other += mode & filePermissionMask.othr_r ? 'r' : '-';
-  other += mode & filePermissionMask.othr_w ? 'w' : '-';
-  other += mode & filePermissionMask.othr_x ? 'x' : '-';
+  other += mode & filePermissionMask.othr_r ? "r" : "-";
+  other += mode & filePermissionMask.othr_w ? "w" : "-";
+  other += mode & filePermissionMask.othr_x ? "x" : "-";
 
   if (mode & filePermissionMask.suid) {
-    if (user[2] === 'x') {
-      user = user.slice(0, 2) + 's';
-    } else {
-      user = user.slice(0, 2) + 'S';
-    }
+    user = user[2] === "x" ? user.slice(0, 2) + "s" : user.slice(0, 2) + "S";
   }
 
   if (mode & filePermissionMask.guid) {
-    if (group[2] === 'x') {
-      group = group.slice(0, 2) + 's';
-    } else {
-      group = group.slice(0, 2) + 'S';
-    }
+    group =
+      group[2] === "x" ? group.slice(0, 2) + "s" : group.slice(0, 2) + "S";
   }
 
   if (mode & filePermissionMask.sticky) {
-    if (user[2] === 'x' || user[2] === 's') {
-      user = user.slice(0, 2) + 't';
-    } else {
-      user = user.slice(0, 2) + 'T';
-    }
+    user =
+      user[2] === "x" || user[2] === "s"
+        ? user.slice(0, 2) + "t"
+        : user.slice(0, 2) + "T";
   }
 
   return `${user}${group}${other}`;
@@ -104,10 +95,10 @@ function getPermissions(mode) {
 function getTimeString(timeMs) {
   let now = moment();
   let time = moment(timeMs);
-  if (time.format('YYYY') === now.format('YYYY')) {
-    return time.format('MMM DD HH:mm');
+  if (time.format("YYYY") === now.format("YYYY")) {
+    return time.format("MMM DD HH:mm");
   }
-  return time.format('MMM DD YYYY');
+  return time.format("MMM DD YYYY");
 }
 
 function realpath(filePath) {
@@ -160,7 +151,7 @@ function open(filePath, flags) {
 
 function close(fd) {
   return new Promise((resolve, reject) => {
-    fs.close(fd, err => {
+    fs.close(fd, (err) => {
       if (err) {
         reject(err.message);
       } else {
@@ -213,8 +204,8 @@ async function getFileData(filePath) {
         gid: stats.gid,
         size: stats.size,
         atime: stats.atimeMs / 1000,
-        mtime: stats.mtimeMs / 1000
-      }
+        mtime: stats.mtimeMs / 1000,
+      },
     };
   } catch (err) {
     throw new Error(`getFileData: ${err.message}`);
@@ -244,5 +235,5 @@ module.exports = {
   read,
   readdir,
   getFileData,
-  getDirData
+  getDirData,
 };
