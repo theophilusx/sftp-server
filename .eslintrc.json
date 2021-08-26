@@ -1,12 +1,25 @@
 {
-  "extends": [
-      "eslint:recommended", 
-      "plugin:promise/recommended", 
-      "plugin:node/recommended",
-      "plugin:unicorn/recommended",
-      "plugin:jest/recommended",
-      "prettier"],
-  "rules": {
+    "env": {
+        "commonjs": true,
+        "es2021": true,
+        "node": true
+    },
+    "extends": [
+        "eslint:recommended",
+        "plugin:promise/recommended",
+        "plugin:node/recommended",
+        "plugin:unicorn/recommended",
+        "plugin:jest/recommended",
+        "plugin:import/recommended",
+        "prettier"
+    ],
+    "parserOptions": {
+        "ecmaVersion": 12,
+        "ecmaFeatures": {
+            "impliedStrict": true
+        }
+    },
+    "rules": {
     "no-console": 0,
     "quotes": ["error", "double"],
     "unicorn/prefer-module": 0,
@@ -19,19 +32,6 @@
     "unicorn/no-null": 0,
     "unicorn/explicit-length-check": 0,
     "unicorn/numeric-separators-style": 0
-  },
-  "plugins": ["promise", "node", "unicorn", "jest"],
-  "parserOptions": {
-    "ecmaVersion": 2020,
-    "sourceType": "script",
-    "ecmaFeatures": {
-      "impliedStrict": true
-    }
-  },
-  "env": {
-    "es6": true,
-    "node": true,
-    "browser": false,
-    "jest/globals": true
-  }
+    },
+    "plugins": ["promise", "node", "unicorn", "jest", "import"]
 }
