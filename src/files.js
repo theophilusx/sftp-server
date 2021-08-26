@@ -78,8 +78,7 @@ function getPermissions(mode) {
   }
 
   if (mode & filePermissionMask.guid) {
-    group =
-      group[2] === "x" ? group.slice(0, 2) + "s" : group.slice(0, 2) + "S";
+    group = group[2] === "x" ? group.slice(0, 2) + "s" : group.slice(0, 2) + "S";
   }
 
   if (mode & filePermissionMask.sticky) {
@@ -105,7 +104,7 @@ function realpath(filePath) {
   return new Promise((resolve, reject) => {
     fs.realpath(filePath, (err, absPath) => {
       if (err) {
-        reject(err.message);
+        reject(new Error(`realpath: ${err.message}`));
       } else {
         resolve(absPath);
       }
@@ -117,7 +116,7 @@ function lstat(dir) {
   return new Promise((resolve, reject) => {
     fs.lstat(dir, (err, stats) => {
       if (err) {
-        reject(err);
+        reject(new Error(`lstat: ${err.message}`));
       } else {
         resolve(stats);
       }
@@ -129,7 +128,7 @@ function stat(dir) {
   return new Promise((resolve, reject) => {
     fs.stat(dir, (err, stats) => {
       if (err) {
-        reject(err);
+        reject(new Error(`stat: ${err.message}`));
       } else {
         resolve(stats);
       }
@@ -141,7 +140,7 @@ function open(filePath, flags) {
   return new Promise((resolve, reject) => {
     fs.open(filePath, flags, (err, fd) => {
       if (err) {
-        reject(err.message);
+        reject(new Error(`open: ${err.message}`));
       } else {
         resolve(fd);
       }
@@ -153,7 +152,7 @@ function close(fd) {
   return new Promise((resolve, reject) => {
     fs.close(fd, (err) => {
       if (err) {
-        reject(err.message);
+        reject(new Error(`close: ${err.message}`));
       } else {
         resolve(true);
       }
@@ -166,7 +165,7 @@ function read(fd, length) {
     let buf = Buffer.alloc(length);
     fs.read(fd, buf, 0, length, null, (err, bytesRead, buf) => {
       if (err) {
-        reject(err.message);
+        reject(new Error(`read: ${err.message}`));
       } else {
         resolve([bytesRead, buf]);
       }
@@ -178,7 +177,7 @@ function readdir(dirPath) {
   return new Promise((resolve, reject) => {
     fs.readdir(dirPath, (err, files) => {
       if (err) {
-        reject(err.message);
+        reject(new Error(`readdir: ${err.message}`));
       } else {
         resolve(files);
       }
