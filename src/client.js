@@ -1,11 +1,10 @@
 const { authHandler } = require("./auth");
 const { sessionHandler } = require("./session");
-const { DEBUG_LEVEL } = require("./constants");
-const { debugMsg } = require("./utils");
+const { debugLow, debugMedium, logger } = require("./logger");
 
 function handshakeHandler() {
   return (negotiated) => {
-    debugMsg(DEBUG_LEVEL.MEDIUM, "handshakeHandler", [
+    debugMedium("handshakeHandler", [
       "Handshake negotiated",
       `Key Exchange: ${negotiated.kex}`,
       `Server Host Key: ${negotiated.srvHostKey}`,
@@ -23,34 +22,32 @@ function handshakeHandler() {
 
 function rekeyHandler() {
   return () => {
-    debugMsg(DEBUG_LEVEL.MEDIUM, "rekeyHandler", "A rekey event has completed");
+    debugMedium("rekeyHandler", "A rekey event has completed");
   };
 }
 
 function closeHandler() {
   return () => {
-    debugMsg(DEBUG_LEVEL.MEDIUM, "closeHandler", "The client connection has been closed");
+    debugMedium("closeHandler", "The client connection has been closed");
   };
 }
 
 function endHandler() {
   return () => {
-    debugMsg(DEBUG_LEVEL.MEDIUM, "endHandler", "The client connection has ended");
+    debugMedium("endHandler", "The client connection has ended");
   };
 }
 
 function errorHandler(client) {
   return (err) => {
-    debugMsg(DEBUG_LEVEL.MEDIUM, "errorHandler", `Client Error: ${err.message}`);
-    console.error("A client error event has fired");
-    console.error(`Error: ${err.message}`);
+    logger.error("errorHandler: ", err);
     client.end();
   };
 }
 
 function clientHandler() {
   return (client) => {
-    debugMsg(DEBUG_LEVEL.LOW, "clientHandler", "Client connected");
+    debugLow("clientHandler", "Client connected");
     client
       .on("authentication", authHandler())
       .on("handshake", handshakeHandler())
@@ -59,7 +56,7 @@ function clientHandler() {
       .on("end", endHandler())
       .on("error", errorHandler(client))
       .on("ready", () => {
-        debugMsg(DEBUG_LEVEL.LOW, "readyHandler", "Client authenticated!");
+        debugLow("readyHandler", "Client authenticated!");
         client.on("session", sessionHandler(client));
       });
   };

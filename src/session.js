@@ -1,27 +1,22 @@
 const listeners = require("./listeners");
-const { debugMsg } = require("./utils");
-const { DEBUG_LEVEL } = require("./constants");
+const { debugLow } = require("./logger");
 
 function sessionCloseHandler() {
   return () => {
-    debugMsg(
-      DEBUG_LEVEL.LOW,
-      "sessionCloseHandler",
-      "The client session has been closed"
-    );
+    debugLow("sessionCloseHandler", "The client session has been closed");
   };
 }
 
 function sessionEndHandler(client) {
   return () => {
-    debugMsg(DEBUG_LEVEL.LOW, "sessionEndHandler", "The client session has ended");
+    debugLow("sessionEndHandler", "The client session has ended");
     client.end();
   };
 }
 
 function sessionErrorHandler(client) {
   return (err) => {
-    debugMsg(DEBUG_LEVEL.LOW, "sessionErrorHandler", `Session Error: ${err.message}`);
+    debugLow("sessionErrorHandler", `Session Error: ${err.message}`);
     console.error(`Session Error: ${err.message}`);
     client.end();
   };
@@ -30,15 +25,11 @@ function sessionErrorHandler(client) {
 function sessionEnvHandler() {
   return (accept, reject, info) => {
     try {
-      debugMsg(
-        DEBUG_LEVEL.LOW,
-        "sessionEnvHandler",
-        `Key: ${info.key} Value: ${info.value}`
-      );
+      debugLow("sessionEnvHandler", `Key: ${info.key} Value: ${info.value}`);
       process.env[info.key] = info.value;
       accept ? accept() : null;
     } catch (err) {
-      debugMsg(DEBUG_LEVEL.LOW, "sessionEnvHandler", err.message);
+      debugLow("sessionEnvHandler", `Error: ${err.message}`);
       reject ? reject() : null;
     }
   };
@@ -46,7 +37,7 @@ function sessionEnvHandler() {
 
 function sftpHandler() {
   return (accept) => {
-    debugMsg(DEBUG_LEVEL.LOW, "sftpHandler", "SFTP Session Started");
+    debugLow("sftpHandler", "SFTP Session Started");
     let sftp = accept();
     sftp
       //.on('OPEN', listeners.open(sftpStream))
@@ -75,7 +66,7 @@ function sftpHandler() {
 function sessionHandler(client) {
   return (accept) => {
     let session = accept();
-    debugMsg(DEBUG_LEVEL.LOW, "sessionHandler", "Session started");
+    debugLow("sessionHandler", "Session started");
     session
       .on("close", sessionCloseHandler())
       .on("end", sessionEndHandler(client))
