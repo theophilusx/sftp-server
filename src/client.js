@@ -1,10 +1,10 @@
 const { authHandler } = require("./auth");
 const { sessionHandler } = require("./session");
-const { debugLow, debugMedium, logger } = require("./logger");
+const log = require("./logger");
 
 function handshakeHandler() {
   return (negotiated) => {
-    debugMedium("handshakeHandler", [
+    log.debug("handshakeHandler", [
       "Handshake negotiated",
       `Key Exchange: ${negotiated.kex}`,
       `Server Host Key: ${negotiated.srvHostKey}`,
@@ -22,32 +22,32 @@ function handshakeHandler() {
 
 function rekeyHandler() {
   return () => {
-    debugMedium("rekeyHandler", "A rekey event has completed");
+    log.silly("rekeyHandler", "A rekey event has completed");
   };
 }
 
 function closeHandler() {
   return () => {
-    debugMedium("closeHandler", "The client connection has been closed");
+    log.debug("closeHandler", "The client connection has been closed");
   };
 }
 
 function endHandler() {
   return () => {
-    debugMedium("endHandler", "The client connection has ended");
+    log.debug("endHandler", "The client connection has ended");
   };
 }
 
 function errorHandler(client) {
   return (err) => {
-    logger.error("errorHandler: ", err);
+    log.error("errorHandler", JSON.stringify(err, null, " "));
     client.end();
   };
 }
 
 function clientHandler() {
   return (client) => {
-    debugLow("clientHandler", "Client connected");
+    log.debug("clientHandler", "Client connected");
     client
       .on("authentication", authHandler())
       .on("handshake", handshakeHandler())
@@ -56,7 +56,7 @@ function clientHandler() {
       .on("end", endHandler())
       .on("error", errorHandler(client))
       .on("ready", () => {
-        debugLow("readyHandler", "Client authenticated!");
+        log.info("readyHandler", "Client authenticated!");
         client.on("session", sessionHandler(client));
       });
   };

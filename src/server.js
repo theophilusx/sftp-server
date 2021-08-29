@@ -2,12 +2,15 @@ const { readFileSync } = require("fs");
 const { Server } = require("ssh2");
 const { clientHandler } = require("./client");
 const config = require("./config");
-const { debugHigh, logger } = require("./logger");
+const log = require("./logger");
 
 function connectionHandler() {
   return (_client, info) => {
-    debugHigh("connectionHandler", [
-      `A new connection detected from ${info.ip}:${info.port}`,
+    log.info(
+      "connectinHandler",
+      `A new connection detected from ${info.ip}:${info.port}`
+    );
+    log.debug("connectionHandler", [
       `Family: ${info.family}`,
       `Raw Ident: ${info.header.identRaw}`,
       `Version: Protocol: ${info.header.versions.protocol} Software: ${info.header.versions.software}`,
@@ -23,6 +26,6 @@ new Server(
   clientHandler()
 )
   .listen(config.port, config.bindAddress, () => {
-    logger.info(`Listening on ${config.bindAddress}:${config.port}`);
+    log.info("Service", `Listening on ${config.bindAddress}:${config.port}`);
   })
   .on("connection", connectionHandler());

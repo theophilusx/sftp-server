@@ -1,23 +1,22 @@
 const listeners = require("./listeners");
-const { debugLow } = require("./logger");
+const log = require("./logger");
 
 function sessionCloseHandler() {
   return () => {
-    debugLow("sessionCloseHandler", "The client session has been closed");
+    log.debug("sessionCloseHandler", "The client session has been closed");
   };
 }
 
 function sessionEndHandler(client) {
   return () => {
-    debugLow("sessionEndHandler", "The client session has ended");
+    log.debug("sessionEndHandler", "The client session has ended");
     client.end();
   };
 }
 
 function sessionErrorHandler(client) {
   return (err) => {
-    debugLow("sessionErrorHandler", `Session Error: ${err.message}`);
-    console.error(`Session Error: ${err.message}`);
+    log.error("sessionErrorHandler", JSON.stringify(err, null, " "));
     client.end();
   };
 }
@@ -25,11 +24,11 @@ function sessionErrorHandler(client) {
 function sessionEnvHandler() {
   return (accept, reject, info) => {
     try {
-      debugLow("sessionEnvHandler", `Key: ${info.key} Value: ${info.value}`);
+      log.debug("sessionEnvHandler", `Key: ${info.key} Value: ${info.value}`);
       process.env[info.key] = info.value;
       accept ? accept() : null;
     } catch (err) {
-      debugLow("sessionEnvHandler", `Error: ${err.message}`);
+      log.error("sessionEnvHandler", JSON.stringify(err, null, " "));
       reject ? reject() : null;
     }
   };
@@ -37,7 +36,7 @@ function sessionEnvHandler() {
 
 function sftpHandler() {
   return (accept) => {
-    debugLow("sftpHandler", "SFTP Session Started");
+    log.debug("sftpHandler", "SFTP Session Started");
     let sftp = accept();
     sftp
       //.on('OPEN', listeners.open(sftpStream))
@@ -66,7 +65,7 @@ function sftpHandler() {
 function sessionHandler(client) {
   return (accept) => {
     let session = accept();
-    debugLow("sessionHandler", "Session started");
+    log.debug("sessionHandler", "Session started");
     session
       .on("close", sessionCloseHandler())
       .on("end", sessionEndHandler(client))

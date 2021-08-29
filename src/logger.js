@@ -1,32 +1,20 @@
 const { createLogger, format, transports } = require("winston");
 const config = require("./config");
 
-let logLevel;
-switch (config.debug) {
-  case 1:
-    logLevel = "verbose";
-    break;
-  case 2:
-    logLevel = "debug";
-    break;
-  case 3:
-    logLevel = "silly";
-    break;
-  default:
-    logLevel = "info";
-}
+const { combine, timestamp, printf } = format;
+const myFormat = printf(({ level, message, timestamp }) => {
+  return `${timestamp} [${level}]: ${message}`;
+});
 
 const logger = createLogger({
-  level: logLevel,
-  format: format.combine(
-    format.timestamp({
+  level: config.logLevel,
+  format: combine(
+    timestamp({
       format: "YYYY-MM-DD HH:mm:ss",
     }),
-    format.errors({ stack: true }),
-    format.splat(),
-    format.json()
+    myFormat
   ),
-  defaultMeta: { service: "sftp-server" },
+  //defaultMeta: { service: "sftp-server" },
   transports: [new transports.File({ filename: config.logFile })],
 });
 
@@ -37,29 +25,42 @@ const logger = createLogger({
 if (process.env.NODE_ENV !== "production") {
   logger.add(
     new transports.Console({
-      format: format.combine(format.colorize(), format.simple()),
+      format: format.combine(format.colorize(), myFormat),
     })
   );
 }
 
-function debugLow(name, msgs, extra) {
-  let m = Array.isArray(msgs) ? msgs.join("\n ") : msgs;
-  extra ? logger.verbose(`${name}: ${m}`, extra) : logger.verbose(`${name}: ${m}`);
-}
+logger.info(`config: ${JSON.stringify({ ...config, password: "********" }, null, " ")}`);
 
-function debugMedium(name, msgs, extra) {
-  let m = Array.isArray(msgs) ? msgs.join("\n  ") : msgs;
+function debug(name, msgs, extra) {
+  let m = Array.isArray(msgs) ? msgs.join("\n ") : msgs;
   extra ? logger.debug(`${name}: ${m}`, extra) : logger.debug(`${name}: ${m}`);
 }
 
-function debugHigh(name, msgs, extra) {
+function silly(name, msgs, extra) {
   let m = Array.isArray(msgs) ? msgs.join("\n  ") : msgs;
-  extra ? logger.silly(`${name}: ${m}`, extra) : logger.debug(`${name}: ${m}`);
+  extra ? logger.silly(`${name}: ${m}`, extra) : logger.silly(`${name}: ${m}`);
+}
+
+function verbose(name, msgs, extra) {
+  let m = Array.isArray(msgs) ? msgs.join("\n  ") : msgs;
+  extra ? logger.verbose(`${name}: ${m}`, extra) : logger.verbose(`${name}: ${m}`);
+}
+
+function error(name, msgs, extra) {
+  let m = Array.isArray(msgs) ? msgs.join("\n  ") : msgs;
+  extra ? logger.error(`${name}: ${m}`, extra) : logger.error(`${name}: ${m}`);
+}
+
+function info(name, msgs, extra) {
+  let m = Array.isArray(msgs) ? msgs.join("\n  ") : msgs;
+  extra ? logger.info(`${name}: ${m}`, extra) : logger.info(`${name}: ${m}`);
 }
 
 module.exports = {
-  logger,
-  debugLow,
-  debugMedium,
-  debugHigh,
+  error,
+  info,
+  verbose,
+  debug,
+  silly,
 };

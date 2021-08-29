@@ -7,7 +7,7 @@ const {
 const files = require("./files");
 const { handleState, handleType, handleFactory } = require("./handle");
 const config = require("./config");
-const { debugLow } = require("./logger");
+const log = require("./logger");
 
 const root = config.root;
 
@@ -16,7 +16,7 @@ let handles = new Map();
 
 function opendir(sftp) {
   return async (reqid, path) => {
-    debugLow("opendir", `SFTP opendir event: RQID: ${reqid} Path: ${path}`);
+    log.debug("opendir", `SFTP opendir event: RQID: ${reqid} Path: ${path}`);
 
     try {
       let dirPath = path || root;
@@ -24,7 +24,7 @@ function opendir(sftp) {
         dirPath = join(root, dirPath);
       }
       if (!dirPath.startsWith(root)) {
-        debugLow("opendir", `Invalid directory path ${dirPath}`);
+        log.debug("opendir", `Invalid directory path ${dirPath}`);
         sftp.status(reqid, STATUS_CODE.FAILURE, `Invalid directory path: ${dirPath}`);
       } else {
         let absPath = await files.realpath(dirPath);
@@ -34,12 +34,12 @@ function opendir(sftp) {
           handles.set(`handle-${handle.id}`, handle);
           sftp.handle(reqid, Buffer.from(`handle-${handle.id}`));
         } else {
-          debugLow("opendir", `${path} is not a directory`);
+          log.debug("opendir", `${path} is not a directory`);
           sftp.status(reqid, STATUS_CODE.FAILURE, `${path} is not a directory`);
         }
       }
     } catch (err) {
-      debugLow("opendir", `Error: ${err.message}`);
+      log.debug("opendir", `Error: ${err.message}`);
       sftp.status(reqid, STATUS_CODE.FAILURE, err.message);
     }
     return true;
@@ -48,7 +48,7 @@ function opendir(sftp) {
 
 function readdir(sftp) {
   return async (reqid, buffer) => {
-    debugLow("readdir", [
+    log.debug("readdir", [
       `SFTP readdir event: RQID: ${reqid}`,
       `handle is ${buffer.toString()}`,
     ]);
@@ -57,13 +57,13 @@ function readdir(sftp) {
       let handleId = buffer.toString();
       let handle = handles.get(handleId);
       if (!handle) {
-        debugLow("readdir", `Unknown handle ID ${handleId}`);
+        log.debug("readdir", `Unknown handle ID ${handleId}`);
         sftp.status(reqid, STATUS_CODE.FAILURE, `Unknown handle ID ${handleId}`);
       } else if (handle.type !== handleType.DIR) {
-        debugLow("Bad handle type");
+        log.debug("Bad handle type");
         sftp.status(reqid, STATUS_CODE.FAILURE, "Bad handle type");
       } else if (handle.status === handleState.CLOSE) {
-        debugLow("readdir", "handle is already closed");
+        log.debug("readdir", "handle is already closed");
         sftp.status(reqid, STATUS_CODE.FAILURE, "handle is already closed");
       } else if (handle.state === handleState.COMPLETE) {
         sftp.status(reqid, STATUS_CODE.EOF);
@@ -75,7 +75,7 @@ function readdir(sftp) {
       }
       return true;
     } catch (err) {
-      debugLow("readdir", `Error: ${err.message}`);
+      log.debug("readdir", `Error: ${err.message}`);
       sftp.status(reqid, STATUS_CODE.FAILURE, err.toString());
       return true;
     }
@@ -84,11 +84,11 @@ function readdir(sftp) {
 
 function close(sftp) {
   return async (reqid, buffer) => {
-    debugLow("close", [`SFTP close reqid ${reqid}`, `handle: ${buffer.toString()}`]);
+    log.debug("close", [`SFTP close reqid ${reqid}`, `handle: ${buffer.toString()}`]);
     let handleId = buffer.toString();
     let handle = handles.get(handleId);
     if (!handle) {
-      debugLow("close", `Unknown handle ID ${handleId}`);
+      log.debug("close", `Unknown handle ID ${handleId}`);
       sftp.status(reqid, STATUS_CODE.FAILURE, `Unknown handle ID ${handleId}`);
     } else if (handle.type === handleType.DIR) {
       handle.state = handleState.CLOSE;
@@ -109,21 +109,21 @@ function close(sftp) {
 
 function lstat(sftp) {
   return async (reqid, filePath) => {
-    debugLow("lstat", [`SFTP lstat REQID ${reqid}`, `filePath: ${filePath}`]);
+    log.debug("lstat", [`SFTP lstat REQID ${reqid}`, `filePath: ${filePath}`]);
 
     try {
       if (!filePath.startsWith("/")) {
         filePath = join(root, filePath);
       }
       if (!filePath.startsWith(root)) {
-        debugLow("lstat", `Invalid file path ${filePath}`);
+        log.debug("lstat", `Invalid file path ${filePath}`);
         sftp.status(reqid, STATUS_CODE.FAILURE, `Invalid file path ${filePath}`);
       } else {
         let attrs = await files.lstat(filePath);
         sftp.attrs(reqid, attrs);
       }
     } catch (err) {
-      debugLow("lstat", `Error: ${err.message}`);
+      log.debug("lstat", `Error: ${err.message}`);
       sftp.status(reqid, STATUS_CODE.FAILURE, err.message);
     }
     return true;
@@ -132,21 +132,21 @@ function lstat(sftp) {
 
 function stat(sftp) {
   return async (reqid, filePath) => {
-    debugLow("stat", [`SFTP lstat REQID ${reqid}`, `filePath: ${filePath}`]);
+    log.debug("stat", [`SFTP lstat REQID ${reqid}`, `filePath: ${filePath}`]);
 
     try {
       if (!filePath.startsWith("/")) {
         filePath = join(root, filePath);
       }
       if (!filePath.startsWith(root)) {
-        debugLow("stat", `Invalid file path ${filePath}`);
+        log.debug("stat", `Invalid file path ${filePath}`);
         sftp.status(reqid, STATUS_CODE.FAILURE, `Invalid file path ${filePath}`);
       } else {
         let attrs = await files.stat(filePath);
         sftp.attrs(reqid, attrs);
       }
     } catch (err) {
-      debugLow("stat", `Error: ${err.message}`);
+      log.debug("stat", `Error: ${err.message}`);
       console.log(`stat: ${err.message}`);
       sftp.status(reqid, STATUS_CODE.FAILURE, err.message);
     }
@@ -156,7 +156,7 @@ function stat(sftp) {
 
 function realpath(sftp) {
   return async (reqid, filePath) => {
-    debugLow("realpath", [`SFTP realpath REQID: ${reqid}`, `Path: ${filePath}`]);
+    log.debug("realpath", `SFTP realpath REQID: ${reqid} Path: ${filePath}`);
 
     try {
       let targetPath = filePath || root;
@@ -164,16 +164,16 @@ function realpath(sftp) {
         targetPath = join(root, targetPath);
       }
       if (!targetPath.startsWith(root)) {
-        debugLow("realpath", `realpath: Bad path ${targetPath}`);
+        log.debug("realpath", `realpath: Bad path ${targetPath}`);
         sftp.status(reqid, STATUS_CODE.FAILURE, `Bad path ${targetPath}`);
       } else {
         let absPath = await files.realpath(targetPath);
-        debugLow("realpath", `Absolute path = ${absPath}`);
+        log.debug("realpath", `Absolute path = ${absPath}`);
         sftp.name(reqid, [{ filename: absPath }]);
       }
       return true;
     } catch (err) {
-      debugLow("realpath", `Error: ${err.message}`);
+      log.debug("realpath", `Error: ${err.message}`);
       sftp.status(reqid, STATUS_CODE.FAILURE, err.message);
     }
   };
@@ -273,7 +273,7 @@ function realpath(sftp) {
 
 function write(sftp) {
   return async (reqid, buffer, offset, data) => {
-    debugLow("write", [
+    log.debug("write", [
       `SFTP write REQID: ${reqid}`,
       `Handle ID: ${buffer.toString()} Offset: ${offset} Length: ${data.length}`,
     ]);
@@ -281,7 +281,7 @@ function write(sftp) {
     try {
       sftp.status(reqid, STATUS_CODE.OP_UNSUPPORTED);
     } catch (err) {
-      debugLow("write", `Error: ${err.message}`);
+      log.debug("write", `Error: ${err.message}`);
       sftp.status(reqid, STATUS_CODE.FAILURE, err.message);
     }
     return true;
@@ -290,7 +290,7 @@ function write(sftp) {
 
 function noop(sftp, name) {
   return (reqid) => {
-    debugLow("noop", `SFTP NOOP ${name} REQID: ${reqid}`);
+    log.debug("noop", `SFTP NOOP ${name} REQID: ${reqid}`);
     sftp.status(reqid, STATUS_CODE.OP_UNSUPPORTED);
     return true;
   };

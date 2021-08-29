@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const moment = require("moment");
-const { debugHigh } = require("./logger");
+const log = require("./logger");
 
 const fileModeMasks = {
   typeMask: 0o170000,
@@ -53,7 +53,7 @@ function getFileType(mode) {
     case fileModeMasks.fifo:
       return "p";
     default:
-      debugHigh("getFileType", `Unrecognised file mode ${mode}`);
+      log.debug("getFileType", `Unrecognised file mode ${mode}`);
       return "?";
   }
 }
@@ -89,7 +89,7 @@ function getPermissions(mode) {
         ? user.slice(0, 2) + "t"
         : user.slice(0, 2) + "T";
   }
-  debugHigh("getPermissions", `${mode} permissions = ${user}${group}${other}`);
+  log.debug("getPermissions", `${mode} permissions = ${user}${group}${other}`);
   return `${user}${group}${other}`;
 }
 
@@ -97,10 +97,10 @@ function getTimeString(timeMs) {
   let now = moment();
   let time = moment(timeMs);
   if (time.format("YYYY") === now.format("YYYY")) {
-    debugHigh("getTimeString", `${timeMs} ms = ${time.format("MMM DD HH:mm")}`);
+    log.debug("getTimeString", `${timeMs} ms = ${time.format("MMM DD HH:mm")}`);
     return time.format("MMM DD HH:mm");
   }
-  debugHigh("getTimeString", `${timeMs} ms = ${time.format("MMM DD YYYY")}`);
+  log.debug("getTimeString", `${timeMs} ms = ${time.format("MMM DD YYYY")}`);
   return time.format("MMM DD YYYY");
 }
 
@@ -108,7 +108,7 @@ function realpath(filePath) {
   return new Promise((resolve, reject) => {
     fs.realpath(filePath, (err, absPath) => {
       if (err) {
-        debugHigh("realpath", `Error: ${err.message}`);
+        log.debug("realpath", `Error: ${err.message}`);
         reject(new Error(`realpath: ${err.message}`));
       } else {
         resolve(absPath);
@@ -121,7 +121,7 @@ function lstat(dir) {
   return new Promise((resolve, reject) => {
     fs.lstat(dir, (err, stats) => {
       if (err) {
-        debugHigh("lstat", `Error: ${err.message}`);
+        log.debugg("lstat", `Error: ${err.message}`);
         reject(new Error(`lstat: ${err.message}`));
       } else {
         resolve(stats);
@@ -134,7 +134,7 @@ function stat(dir) {
   return new Promise((resolve, reject) => {
     fs.stat(dir, (err, stats) => {
       if (err) {
-        debugHigh("stat", `Error: ${err.message}`);
+        log.debug("stat", `Error: ${err.message}`);
         reject(new Error(`stat: ${err.message}`));
       } else {
         resolve(stats);
@@ -147,7 +147,7 @@ function open(filePath, flags) {
   return new Promise((resolve, reject) => {
     fs.open(filePath, flags, (err, fd) => {
       if (err) {
-        debugHigh("open", `Error: ${err.message}`);
+        log.debug("open", `Error: ${err.message}`);
         reject(new Error(`open: ${err.message}`));
       } else {
         resolve(fd);
@@ -160,7 +160,7 @@ function close(fd) {
   return new Promise((resolve, reject) => {
     fs.close(fd, (err) => {
       if (err) {
-        debugHigh("close", `Error: ${err.message}`);
+        log.debug("close", `Error: ${err.message}`);
         reject(new Error(`close: ${err.message}`));
       } else {
         resolve(true);
@@ -174,7 +174,7 @@ function read(fd, length) {
     let buf = Buffer.alloc(length);
     fs.read(fd, buf, 0, length, null, (err, bytesRead, buf) => {
       if (err) {
-        debugHigh("read", `Error: ${err.message}`);
+        log.debug("read", `Error: ${err.message}`);
         reject(new Error(`read: ${err.message}`));
       } else {
         resolve([bytesRead, buf]);
@@ -187,7 +187,7 @@ function readdir(dirPath) {
   return new Promise((resolve, reject) => {
     fs.readdir(dirPath, (err, files) => {
       if (err) {
-        debugHigh("readdir", `Error: ${err.message}`);
+        log.debug("readdir", `Error: ${err.message}`);
         reject(new Error(`readdir: ${err.message}`));
       } else {
         resolve(files);
@@ -218,7 +218,7 @@ async function getFileMetaData(filePath) {
       },
     };
   } catch (err) {
-    debugHigh("getFileMetaData", `Error: ${err.message}`);
+    log.debug("getFileMetaData", `Error: ${err.message}`);
     throw new Error(`getFileMetaData: ${err.message}`);
   }
 }
@@ -233,7 +233,7 @@ async function getDirData(dirPath) {
     }
     return data;
   } catch (err) {
-    debugHigh("getDirData", `Error: ${err.message}`);
+    log.debug("getDirData", `Error: ${err.message}`);
     throw new Error(`readDir: ${err.message}`);
   }
 }

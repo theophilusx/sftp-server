@@ -15,7 +15,7 @@ const config = {
   password: process.env.SFTP_PASSWORD,
   bindAddress: process.env.SFTP_BIND_ADDRESS || "127.0.0.1",
   port: Number.parseInt(process.env.SFTP_PORT || "2222"),
-  debug: Number.parseInt(process.env.SFTP_DEBUG || "0"),
+  logLevel: process.env.SFTP_LOG_LEVEL || "info",
   logFile: process.env.SFTP_LOG_FILE || "./sftp-server.log",
 };
 
