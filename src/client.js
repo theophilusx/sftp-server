@@ -1,10 +1,27 @@
-const { authHandler } = require("./auth");
+const { authenticateClient } = require("./auth");
 const { sessionHandler } = require("./session");
 const log = require("./logger");
 
-function handshakeHandler() {
+function clientHandler() {
+  return (client) => {
+    log.debug("clientHandler", "Client connected");
+    client
+      .on("authentication", authenticateClient())
+      .on("handshake", handshakeLogger())
+      .on("rekey", rekeyLogger())
+      .on("close", closeClientLogger())
+      .on("end", endClientLogger())
+      .on("error", clientErrorHandler(client))
+      .on("ready", () => {
+        log.info("ready", "Opening client session");
+        client.on("session", sessionHandler(client));
+      });
+  };
+}
+
+function handshakeLogger() {
   return (negotiated) => {
-    log.debug("handshakeHandler", [
+    log.debug("handshakeLogger", [
       "Handshake negotiated",
       `Key Exchange: ${negotiated.kex}`,
       `Server Host Key: ${negotiated.srvHostKey}`,
@@ -20,45 +37,28 @@ function handshakeHandler() {
   };
 }
 
-function rekeyHandler() {
+function rekeyLogger() {
   return () => {
-    log.silly("rekeyHandler", "A rekey event has completed");
+    log.silly("rekeyLogger", "A rekey event has completed");
   };
 }
 
-function closeHandler() {
+function closeClientLogger() {
   return () => {
-    log.debug("closeHandler", "The client connection has been closed");
+    log.debug("closeClientLogger", "The client connection has been closed");
   };
 }
 
-function endHandler() {
+function endClientLogger() {
   return () => {
-    log.debug("endHandler", "The client connection has ended");
+    log.debug("endClientLogger", "The client connection has ended");
   };
 }
 
-function errorHandler(client) {
+function clientErrorHandler(client) {
   return (err) => {
-    log.error("errorHandler", JSON.stringify(err, null, " "));
+    log.error("clientErrorHandler", JSON.stringify(err, null, " "));
     client.end();
-  };
-}
-
-function clientHandler() {
-  return (client) => {
-    log.debug("clientHandler", "Client connected");
-    client
-      .on("authentication", authHandler())
-      .on("handshake", handshakeHandler())
-      .on("rekey", rekeyHandler())
-      .on("close", closeHandler())
-      .on("end", endHandler())
-      .on("error", errorHandler(client))
-      .on("ready", () => {
-        log.info("readyHandler", "Client authenticated!");
-        client.on("session", sessionHandler(client));
-      });
   };
 }
 

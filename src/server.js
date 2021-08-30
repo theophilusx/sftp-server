@@ -4,7 +4,23 @@ const { clientHandler } = require("./client");
 const config = require("./config");
 const log = require("./logger");
 
-function connectionHandler() {
+log.info(
+  "server",
+  `config: ${JSON.stringify({ ...config, password: "********" }, null, " ")}`
+);
+
+new Server(
+  {
+    hostKeys: [readFileSync(config.keyFile)],
+  },
+  clientHandler()
+)
+  .listen(config.port, config.bindAddress, () => {
+    log.info("Service", `Listening on ${config.bindAddress}:${config.port}`);
+  })
+  .on("connection", connectionLogger());
+
+function connectionLogger() {
   return (_client, info) => {
     log.info(
       "connectinHandler",
@@ -18,14 +34,3 @@ function connectionHandler() {
     ]);
   };
 }
-
-new Server(
-  {
-    hostKeys: [readFileSync(config.keyFile)],
-  },
-  clientHandler()
-)
-  .listen(config.port, config.bindAddress, () => {
-    log.info("Service", `Listening on ${config.bindAddress}:${config.port}`);
-  })
-  .on("connection", connectionHandler());

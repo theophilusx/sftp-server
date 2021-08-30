@@ -5,11 +5,11 @@ const log = require("./logger");
 const allowedUser = Buffer.from(config.username);
 const allowedPassword = Buffer.from(config.password);
 
-function authHandler() {
+function authenticateClient() {
   return (ctx) => {
     let allowed = true;
 
-    log.debug("authHandler", `Method is ${ctx.method}`);
+    log.debug("authenticateClient", `Method is ${ctx.method}`);
 
     switch (ctx.method) {
       case "password": {
@@ -17,30 +17,30 @@ function authHandler() {
         let password = Buffer.from(ctx.password);
 
         if (!checkValue(user, allowedUser)) {
-          log.debug("authHandler", "Username does not match");
+          log.debug("authenticateClient", "Username does not match");
           allowed = false;
         }
         if (allowed && !checkValue(password, allowedPassword)) {
-          log.debug("authHandler", "Password failed");
+          log.debug("authenticateClient", "Password failed");
           return ctx.reject();
         }
         break;
       }
       default: {
-        log.debug("authHandler", `No supporting method for ${ctx.method}`);
+        log.debug("authenticateClient", `No supporting method for ${ctx.method}`);
         allowed = false;
         return ctx.reject();
       }
     }
     if (allowed) {
-      log.debug("authHandler", "Authentication success");
+      log.info("authenticateClient", `User ${ctx.username} ${ctx.method} authenticated`);
       return ctx.accept();
     }
-    log.info("authHandler", `Authentication failed for ${ctx.username}`);
+    log.info("authenticateClient", `Authentication failed for ${ctx.username}`);
     return ctx.reject();
   };
 }
 
 module.exports = {
-  authHandler,
+  authenticateClient,
 };

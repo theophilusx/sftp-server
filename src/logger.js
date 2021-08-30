@@ -30,23 +30,6 @@ if (process.env.NODE_ENV !== "production") {
   );
 }
 
-logger.info(`config: ${JSON.stringify({ ...config, password: "********" }, null, " ")}`);
-
-function debug(name, msgs, extra) {
-  let m = Array.isArray(msgs) ? msgs.join("\n ") : msgs;
-  extra ? logger.debug(`${name}: ${m}`, extra) : logger.debug(`${name}: ${m}`);
-}
-
-function silly(name, msgs, extra) {
-  let m = Array.isArray(msgs) ? msgs.join("\n  ") : msgs;
-  extra ? logger.silly(`${name}: ${m}`, extra) : logger.silly(`${name}: ${m}`);
-}
-
-function verbose(name, msgs, extra) {
-  let m = Array.isArray(msgs) ? msgs.join("\n  ") : msgs;
-  extra ? logger.verbose(`${name}: ${m}`, extra) : logger.verbose(`${name}: ${m}`);
-}
-
 function error(name, msgs, extra) {
   let m = Array.isArray(msgs) ? msgs.join("\n  ") : msgs;
   extra ? logger.error(`${name}: ${m}`, extra) : logger.error(`${name}: ${m}`);
@@ -57,6 +40,20 @@ function info(name, msgs, extra) {
   extra ? logger.info(`${name}: ${m}`, extra) : logger.info(`${name}: ${m}`);
 }
 
+function verbose(name, msgs, extra) {
+  let m = Array.isArray(msgs) ? msgs.join("\n  ") : msgs;
+  extra ? logger.verbose(`${name}: ${m}`, extra) : logger.verbose(`${name}: ${m}`);
+}
+
+function debug(name, msgs, extra) {
+  let m = Array.isArray(msgs) ? msgs.join("\n ") : msgs;
+  extra ? logger.debug(`${name}: ${m}`, extra) : logger.debug(`${name}: ${m}`);
+}
+
+function silly(name, msgs, extra) {
+  let m = Array.isArray(msgs) ? msgs.join("\n  ") : msgs;
+  extra ? logger.silly(`${name}: ${m}`, extra) : logger.silly(`${name}: ${m}`);
+}
 module.exports = {
   error,
   info,
