@@ -1,7 +1,7 @@
 const { join } = require("path");
 const {
   utils: {
-    sftp: { STATUS_CODE },
+    sftp: { STATUS_CODE, flagsToString },
   },
 } = require("ssh2");
 const files = require("./files");
@@ -153,24 +153,20 @@ function open(sftp) {
   return async function (reqid, filename, flags, attrs) {
     log.debug(
       "open",
-      `Reqid: ${reqid} file: ${filename} flags ${sftp.flagsToString(flags)} ` +
+      `Reqid: ${reqid} file: ${filename} flags ${flagsToString(flags)} ` +
         `attrs: ${JSON.stringify(attrs)}`
     );
     try {
       let filePath = normalisePath(filename);
       let absPath = await files.realpath(filePath);
-      let stats = await files.lstat(filePath);
+      log.debug("open", `Reqid: ${reqid} realpath: ${absPath}`);
+      let stats = await files.lstat(absPath);
+      log.debug("open", `Reqid: ${reqid} Stat: ${JSON.stringify(stats, null, " ")}`);
       if (stats.isFile()) {
-        let fd = await files.open(absPath, sftp.flagsToString(flags));
-        let handle = makeHandle(
-          handleType.FILE,
-          absPath,
-          fd,
-          sftp.flagsToString(flags),
-          0
-        );
+        let fd = await files.open(absPath, flagsToString(flags));
+        let handle = makeHandle(handleType.FILE, absPath, fd, flagsToString(flags), 0);
         handles.set(`handle-${handle.id}`, handle);
-        log.debug("open", `Reqid: ${reqid} Hangle: handle-${handle.id}`);
+        log.debug("open", `Reqid: ${reqid} Return hangle: handle-${handle.id}`);
         sftp.handle(reqid, Buffer.from(`handle-${handle.id}`));
       } else {
         log.debug("open", `Reqid: ${reqid} ${absPath} is not a regular file`);
@@ -178,59 +174,55 @@ function open(sftp) {
       }
       return true;
     } catch (err) {
-      console.log(`Reqid: ${reqid} ${JSON.stringify(err, null, " ")}`);
+      console.log(`**** ${err} ****`);
+      log.error("open", `Reqid: ${reqid} ${JSON.stringify(err, null, " ")}`);
       sftp.status(reqid, STATUS_CODE.FAILURE, err.message);
     }
   };
 }
 
-// function read(sftp) {
-//   return async function(reqid, buffer, offset, length) {
-//     console.log(`SFTP read REQID ${reqid}`);
-//     console.log(
-//       `handle: ${buffer.toString()} offset: ${offset} length: ${length}`
-//     );
+function read(sftp) {
+  return async function (reqid, buffer, offset, length) {
+    let handleId = buffer.toString();
+    log.debug(
+      "read",
+      `Reqid: ${reqid} handle: ${handleId} offset: ${offset} length: ${length}`
+    );
 
-//     try {
-//       let handle = handles.get(buffer.toString());
-//       if (!handle) {
-//         sftp.status(
-//           reqid,
-//           STATUS_CODE.FAILURE,
-//           `Bad handle ID ${buffer.toString()}`
-//         );
-//       } else {
-//         if (handle.state === handleState.COMPLETE) {
-//           console.log('reading completed');
-//           sftp.status(reqid, STATUS_CODE.EOF);
-//         } else {
-//           console.log(`handle offset: ${handle.offset}`);
-//           console.log(`Request offset: ${offset}`);
-//           console.log(`Request length: ${length}`);
-//           let [bytesRead, buf] = await files.read(handle.fd, length);
-//           if (bytesRead === 0) {
-//             console.log('no data read - assume complete');
-//             handle.state = handleState.COMPLETE;
-//             handles.set(`handle-${handle.id}`, handle);
-//             sftp.status(reqid, STATUS_CODE.EOF);
-//           } else {
-//             console.log(`Bytres Read; ${bytesRead}`);
-//             let data = Buffer.alloc(21);
-//             buf.copy(data, 0, 0, bytesRead);
-//             console.log(`data length: ${data.length}`);
-//             handle.offset += bytesRead;
-//             handles.set(`handle-${handle.id}`, handle);
-//             sftp.data(reqid, data);
-//           }
-//         }
-//       }
-//     } catch (err) {
-//       console.log(`read: ${err.message}`);
-//       sftp.status(reqid, STATUS_CODE.FAILURE, err.message);
-//     }
-//     return true;
-//   };
-// }
+    try {
+      let handle = handles.get(handleId);
+      if (!handle) {
+        log.debug("reqad", `Reqid: ${reqid} Bad handle ID ${handleId}`);
+        sftp.status(reqid, STATUS_CODE.FAILURE, `Bad handle ID ${handleId}`);
+      } else {
+        if (handle.state === handleState.COMPLETE) {
+          log.debug("read", `Reqid: ${reqid} Reading completed`);
+          sftp.status(reqid, STATUS_CODE.EOF);
+        } else {
+          let [bytesRead, buf] = await files.read(handle.fd, length);
+          if (bytesRead === 0) {
+            log.debug("read", `Reqid: ${reqid} No data read - assume complete`);
+            handle.state = handleState.COMPLETE;
+            handles.set(`handle-${handle.id}`, handle);
+            sftp.status(reqid, STATUS_CODE.EOF);
+          } else {
+            log.debug("read", `Reqid: ${reqid} Bytres Read; ${bytesRead}`);
+            let data = Buffer.alloc(bytesRead);
+            buf.copy(data, 0, 0, bytesRead);
+            log.debug("read", `Reqid: ${reqid} Data length: ${data.length}`);
+            handle.offset += bytesRead;
+            handles.set(`handle-${handle.id}`, handle);
+            sftp.data(reqid, data);
+          }
+        }
+      }
+    } catch (err) {
+      log.error("read", `Reqid: ${reqid} ${JSON.stringify(err, null, " ")}`);
+      sftp.status(reqid, STATUS_CODE.FAILURE, err.message);
+    }
+    return true;
+  };
+}
 
 function write(sftp) {
   return async (reqid, buffer, offset, data) => {
@@ -275,7 +267,7 @@ module.exports = {
   stat,
   realpath,
   open,
-  // read,
+  read,
   write,
   noop,
   normalisePath,
