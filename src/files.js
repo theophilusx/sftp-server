@@ -121,7 +121,7 @@ function lstat(dir) {
   return new Promise((resolve, reject) => {
     fs.lstat(dir, (err, stats) => {
       if (err) {
-        log.debugg("lstat", `Error: ${err.message}`);
+        log.error("lstat", JSON.stringify(err, null, " "));
         reject(new Error(`lstat: ${err.message}`));
       } else {
         resolve(stats);
@@ -134,7 +134,7 @@ function stat(dir) {
   return new Promise((resolve, reject) => {
     fs.stat(dir, (err, stats) => {
       if (err) {
-        log.debug("stat", `Error: ${err.message}`);
+        log.error("stat", JSON.stringify(err, null, " "));
         reject(new Error(`stat: ${err.message}`));
       } else {
         resolve(stats);
@@ -147,9 +147,10 @@ function open(filePath, flags) {
   return new Promise((resolve, reject) => {
     fs.open(filePath, flags, (err, fd) => {
       if (err) {
-        log.debug("open", `Error: ${err.message}`);
+        log.error("open", JSON.stringify(err, null, " "));
         reject(new Error(`open: ${err.message}`));
       } else {
+        log.debug("open", `fd = ${fd}`);
         resolve(fd);
       }
     });
@@ -160,7 +161,7 @@ function close(fd) {
   return new Promise((resolve, reject) => {
     fs.close(fd, (err) => {
       if (err) {
-        log.debug("close", `Error: ${err.message}`);
+        log.error("close", JSON.stringify(err, null, " "));
         reject(new Error(`close: ${err.message}`));
       } else {
         resolve(true);
@@ -174,7 +175,7 @@ function read(fd, length) {
     let buf = Buffer.alloc(length);
     fs.read(fd, buf, 0, length, null, (err, bytesRead, buf) => {
       if (err) {
-        log.debug("read", `Error: ${err.message}`);
+        log.error("read", JSON.stringify(err, null, " "));
         reject(new Error(`read: ${err.message}`));
       } else {
         resolve([bytesRead, buf]);
@@ -187,7 +188,7 @@ function readdir(dirPath) {
   return new Promise((resolve, reject) => {
     fs.readdir(dirPath, (err, files) => {
       if (err) {
-        log.debug("readdir", `Error: ${err.message}`);
+        log.error("readdir", JSON.stringify(err, null, " "));
         reject(new Error(`readdir: ${err.message}`));
       } else {
         resolve(files);
@@ -218,7 +219,7 @@ async function getFileMetaData(filePath) {
       },
     };
   } catch (err) {
-    log.debug("getFileMetaData", `Error: ${err.message}`);
+    log.error("getFileMetaData", JSON.stringify(err, null, " "));
     throw new Error(`getFileMetaData: ${err.message}`);
   }
 }
@@ -233,7 +234,7 @@ async function getDirData(dirPath) {
     }
     return data;
   } catch (err) {
-    log.debug("getDirData", `Error: ${err.message}`);
+    log.error("getDirData", JSON.stringify(err, null, " "));
     throw new Error(`readDir: ${err.message}`);
   }
 }
