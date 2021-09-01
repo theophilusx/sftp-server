@@ -19,10 +19,8 @@ function sftpHandler() {
     log.debug("sftpHandler", "SFTP Session Started");
     let sftp = accept();
     sftp
-      //.on('OPEN', listeners.open(sftpStream))
-      .on("OPEN", listeners.noop(sftp, "open"))
-      //.on("READ", listeners.read(sftpStream))
-      .on("READ", listeners.noop(sftp, "read"))
+      .on("OPEN", listeners.open(sftp))
+      .on("READ", listeners.read(sftp))
       .on("WRITE", listeners.write(sftp))
       .on("FSTAT", listeners.noop(sftp, "fstat"))
       .on("FSETSTAT", listeners.noop(sftp, "fsetstat"))
